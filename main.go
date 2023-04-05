@@ -192,7 +192,7 @@ func main() {
 	sprintStart := args.SprintStart
 
 	// Open a new database file
-	db, err := sql.Open("sqlite3", "./data.db")
+	db, err := sql.Open("sqlite3", "./data.sqlite")
 	if err != nil {
 		fmt.Println("Error opening database:", err)
 		return
