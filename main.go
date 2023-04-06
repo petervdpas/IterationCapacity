@@ -144,11 +144,11 @@ func findPointsCompleted(sprintNumber int, pointsData []PointsCompleted) int {
 }
 
 type Args struct {
-	OrgURL      string `json:"orgURL"`
-	Token       string `json:"token"`
-	Project     string `json:"project"`
-	Team        string `json:"team"`
-	SprintStart int    `json:"sprintStart"`
+	OrgURL       string  `json:"orgURL"`
+	Token        string  `json:"token"`
+	Project      string  `json:"project"`
+	Team         string  `json:"team"`
+	SprintStart  int     `json:"sprintStart"`
 	DaysInSprint float64 `json:"daysInSprint"`
 }
 
@@ -279,8 +279,8 @@ func main() {
 			return
 		}
 		fmt.Printf("ID: %d\n", id)
-		fmt.Printf("Name: %s\n", name)
 		fmt.Printf("Sprint: %d\n", sprint_number)
+		fmt.Printf("Name: %s\n", name)
 		fmt.Printf("Days Available: %f\n", days_available)
 		fmt.Printf("Capacity Per Day: %f\n", capacity_per_day)
 		fmt.Printf("Days Off: %d\n", days_off)
