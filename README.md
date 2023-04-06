@@ -37,12 +37,12 @@ Before running IterationCapacity, you will need to create an **`arguments.json`*
 
 ```json
 {
-	"orgURL": "https://dev.azure.com/<YourOrg>",
-	"token": "<PersonalAccessToken>",
-	"project": "<YourProject>",
-	"team": "<YourTeam>",
-	"sprintStart": 67,
-	"daysInSprint": 14.0
+   "orgURL": "https://dev.azure.com/<YourOrg>",
+   "token": "<PersonalAccessToken>",
+   "project": "<YourProject>",
+   "team": "<YourTeam>",
+   "sprintStart": 67,
+   "daysInSprint": 14.0
 }
 ```
 
