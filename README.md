@@ -41,11 +41,12 @@ Before running IterationCapacity, you will need to create an **`arguments.json`*
 	"token": "<PersonalAccessToken>",
 	"project": "<YourProject>",
 	"team": "<YourTeam>",
-	"sprintStart": 67
+	"sprintStart": 67,
+	"daysInSprint": 14.0
 }
 ```
 
-Replace `<PersonalAccessToken>`, `<YourOrg>`, `<YourProject>`, `<YourTeam>`, and `67` with the relevant information for your project.
+Replace `<PersonalAccessToken>`, `<YourOrg>`, `<YourProject>`, `<YourTeam>`, `67`, `14.0` (number of days in a sprint) with the relevant information for your project.
 
 Once you have created the **`arguments.json`** file, you can run IterationCapacity by executing the following command in the root directory of the repository:
 

@@ -112,14 +112,6 @@ func fetchIterations(connection *azuredevops.Connection, project, team string) (
 	return *iterations, nil
 }
 
-type Args struct {
-	OrgURL      string `json:"orgURL"`
-	Token       string `json:"token"`
-	Project     string `json:"project"`
-	Team        string `json:"team"`
-	SprintStart int    `json:"sprintStart"`
-}
-
 type PointsCompleted struct {
 	SprintNumber int  `json:"sprint"`
 	Completed    int  `json:"completed"`
@@ -151,7 +143,17 @@ func findPointsCompleted(sprintNumber int, pointsData []PointsCompleted) int {
 	return -1 // Sprint not found
 }
 
+type Args struct {
+	OrgURL      string `json:"orgURL"`
+	Token       string `json:"token"`
+	Project     string `json:"project"`
+	Team        string `json:"team"`
+	SprintStart int    `json:"sprintStart"`
+	DaysInSprint float64 `json:"daysInSprint"`
+}
+
 func readArgsFile(filename string) (Args, error) {
+	/* Important! Ignore this file in Git */
 	file, err := os.Open(filename)
 	if err != nil {
 		return Args{}, err
@@ -175,11 +177,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, points := range pointsData {
-		fmt.Printf("Sprint %d completed %d points\n", points.SprintNumber, points.Completed)
-	}
-
-	/* Important! Ignore file in Git */
 	args, err := readArgsFile("arguments.json")
 	if err != nil {
 		fmt.Println("Error reading arguments.json:", err)
@@ -191,6 +188,7 @@ func main() {
 	project := args.Project
 	team := args.Team
 	sprintStart := args.SprintStart
+	daysInSprint := args.DaysInSprint
 
 	// Open a new database file - Important! Ignore file in Git */
 	db, err := sql.Open("sqlite3", "./data.sqlite")
@@ -214,8 +212,6 @@ func main() {
 		fmt.Println("Error creating table:", err)
 		return
 	}
-
-	daysInSprint := 14.0
 
 	connection := azuredevops.NewPatConnection(orgURL, token)
 	iterations, err := fetchIterations(connection, project, team)
