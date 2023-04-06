@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -182,6 +183,14 @@ func readArgsFile(filename string) (Args, error) {
 	return args, nil
 }
 
+func Forecast(daysAvailable float64, pointsCompleted float64, avgCompleted float64) int {
+	if pointsCompleted == 0.0 && daysAvailable > 0.0 {
+		return int(math.Round(daysAvailable * avgCompleted))
+	} else {
+		return 0
+	}
+}
+
 func main() {
 
 	pointsData, err := readPointsCompletedFile("points_completed.json")
@@ -231,7 +240,9 @@ func main() {
 		capacity_per_day REAL,
 		days_off INTEGER,
 		points_completed INTEGER,
-		pnts_complete_for_totaldays REAL
+		pnts_complete_for_totaldays REAL,
+		avg_pnts_complete REAL,
+		forecasted_completed INTEGER
 	)`)
 	if err != nil {
 		fmt.Println("Error creating table:", err)
@@ -266,19 +277,19 @@ func main() {
 
 			daysAvailable := (capacityData.TotalIterationCapacityPerDay * daysInSprint) - float64(capacityData.TotalIterationDaysOff)
 			pointsCompleted := findPointsCompleted(sprintNum, pointsData)
-			pointsCompletedForTotaldayas := pointsCompletedDividedByTotalDaysAvailable(int(pointsCompleted), int(daysAvailable))
+			pointsCompletedForTotalDays := pointsCompletedDividedByTotalDaysAvailable(int(pointsCompleted), int(daysAvailable))
 
 			// Insert a new row into the table
 			_, err = db.Exec(`INSERT INTO iteration_capacity (
 				name, sprint_number, days_available, capacity_per_day, days_off, points_completed, pnts_complete_for_totaldays
-			) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 				iteration.Name,
 				sprintNum,
 				daysAvailable,
 				capacityData.TotalIterationCapacityPerDay,
 				capacityData.TotalIterationDaysOff,
 				pointsCompleted,
-				pointsCompletedForTotaldayas)
+				pointsCompletedForTotalDays)
 			if err != nil {
 				fmt.Println("Error inserting row:", err)
 				return
@@ -286,13 +297,68 @@ func main() {
 		}
 	}
 
-	// Select all rows from the table and print them
-	rows, err := db.Query("SELECT * FROM iteration_capacity")
+	fmt.Println("Determine the average of Completed vs Capacity!")
+	_, err = db.Exec(`UPDATE iteration_capacity 
+		SET avg_pnts_complete = (SELECT AVG(pnts_complete_for_totaldays) 
+		FROM iteration_capacity WHERE points_completed <> 0)`)
+	if err != nil {
+		fmt.Println("Error updating rows:", err)
+		return
+	}
+
+	fmt.Println("Determine the Forecasted Completed!")
+	tx, err := db.Begin()
+	if err != nil {
+		fmt.Println("Error beginning transaction:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	rowsY, err := tx.Query(`SELECT id, points_completed, avg_pnts_complete, days_available FROM iteration_capacity`)
 	if err != nil {
 		fmt.Println("Error selecting rows:", err)
 		return
 	}
-	defer rows.Close()
+	defer rowsY.Close()
+
+	for rowsY.Next() {
+		var id int
+		var points_completed int
+		var avg_pnts_complete float64
+		var days_available int
+		err := rowsY.Scan(&id, &points_completed, &avg_pnts_complete, &days_available)
+		if err != nil {
+			fmt.Println("Error scanning row:", err)
+			continue
+		}
+
+		forecastedCompleted := Forecast(float64(days_available), float64(points_completed), float64(avg_pnts_complete))
+		fmt.Printf("id %d calculated: %d\n", id, forecastedCompleted)
+
+		_, err = tx.Exec(`UPDATE iteration_capacity 
+			SET forecasted_completed = ? 
+			WHERE id = ?`,
+			forecastedCompleted, id)
+
+		if err != nil {
+			fmt.Println("Error updating rows:", err)
+			return
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return
+	}
+
+	// Select all rows from the table and print them
+	rowsX, err := db.Query("SELECT * FROM iteration_capacity")
+	if err != nil {
+		fmt.Println("Error selecting rows:", err)
+		return
+	}
+	defer rowsX.Close()
 
 	var id int
 	var name string
@@ -302,9 +368,11 @@ func main() {
 	var days_off int
 	var points_completed int
 	var pnts_complete_for_totaldays float64
+	var avg_pnts_complete float64
+	var forecasted_completed sql.NullInt64
 
-	for rows.Next() {
-		err := rows.Scan(
+	for rowsX.Next() {
+		err := rowsX.Scan(
 			&id,
 			&name,
 			&sprint_number,
@@ -312,7 +380,9 @@ func main() {
 			&capacity_per_day,
 			&days_off,
 			&points_completed,
-			&pnts_complete_for_totaldays)
+			&pnts_complete_for_totaldays,
+			&avg_pnts_complete,
+			&forecasted_completed)
 		if err != nil {
 			fmt.Println("Error scanning row:", err)
 			return
@@ -325,6 +395,12 @@ func main() {
 		fmt.Printf("Days Off: %d\n", days_off)
 		fmt.Printf("Points Completed: %d\n", points_completed)
 		fmt.Printf("Points Completed vs Days Available: %f\n", pnts_complete_for_totaldays)
+		fmt.Printf("Avg Completed vs Capacity: %f\n", avg_pnts_complete)
+		if forecasted_completed.Valid {
+			fmt.Printf("Forcasted: %d\n", forecasted_completed.Int64)
+		} else {
+			fmt.Println("Forcasted: NULL")
+		}
 		fmt.Println()
 	}
 }
