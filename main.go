@@ -143,6 +143,19 @@ func findPointsCompleted(sprintNumber int, pointsData []PointsCompleted) int {
 	return -1 // Sprint not found
 }
 
+func pointsCompletedDividedByTotalDaysAvailable(completed int, days_available int) float64 {
+
+	if days_available == 0 {
+		// Avoid divide-by-zero error
+		return 0.0
+	} else if completed == -1 {
+		// Sprint not calculated
+		return 0.5
+	} else {
+		return float64(completed) / float64(days_available)
+	}
+}
+
 type Args struct {
 	OrgURL       string  `json:"orgURL"`
 	Token        string  `json:"token"`
@@ -217,7 +230,8 @@ func main() {
 		days_available REAL,
 		capacity_per_day REAL,
 		days_off INTEGER,
-		points_completed INTEGER
+		points_completed INTEGER,
+		pnts_complete_for_totaldays REAL
 	)`)
 	if err != nil {
 		fmt.Println("Error creating table:", err)
@@ -250,16 +264,21 @@ func main() {
 				continue
 			}
 
+			daysAvailable := (capacityData.TotalIterationCapacityPerDay * daysInSprint) - float64(capacityData.TotalIterationDaysOff)
+			pointsCompleted := findPointsCompleted(sprintNum, pointsData)
+			pointsCompletedForTotaldayas := pointsCompletedDividedByTotalDaysAvailable(int(pointsCompleted), int(daysAvailable))
+
 			// Insert a new row into the table
 			_, err = db.Exec(`INSERT INTO iteration_capacity (
-				name, sprint_number, days_available, capacity_per_day, days_off, points_completed
-			) VALUES (?, ?, ?, ?, ?, ?)`,
+				name, sprint_number, days_available, capacity_per_day, days_off, points_completed, pnts_complete_for_totaldays
+			) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 				iteration.Name,
 				sprintNum,
-				(capacityData.TotalIterationCapacityPerDay*daysInSprint)-float64(capacityData.TotalIterationDaysOff),
+				daysAvailable,
 				capacityData.TotalIterationCapacityPerDay,
 				capacityData.TotalIterationDaysOff,
-				findPointsCompleted(sprintNum, pointsData))
+				pointsCompleted,
+				pointsCompletedForTotaldayas)
 			if err != nil {
 				fmt.Println("Error inserting row:", err)
 				return
@@ -282,9 +301,18 @@ func main() {
 	var capacity_per_day float64
 	var days_off int
 	var points_completed int
+	var pnts_complete_for_totaldays float64
 
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &sprint_number, &days_available, &capacity_per_day, &days_off, &points_completed)
+		err := rows.Scan(
+			&id,
+			&name,
+			&sprint_number,
+			&days_available,
+			&capacity_per_day,
+			&days_off,
+			&points_completed,
+			&pnts_complete_for_totaldays)
 		if err != nil {
 			fmt.Println("Error scanning row:", err)
 			return
@@ -296,6 +324,7 @@ func main() {
 		fmt.Printf("Capacity Per Day: %f\n", capacity_per_day)
 		fmt.Printf("Days Off: %d\n", days_off)
 		fmt.Printf("Points Completed: %d\n", points_completed)
+		fmt.Printf("Points Completed vs Days Available: %f\n", pnts_complete_for_totaldays)
 		fmt.Println()
 	}
 }
