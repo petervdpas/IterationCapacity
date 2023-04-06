@@ -190,6 +190,17 @@ func main() {
 	sprintStart := args.SprintStart
 	daysInSprint := args.DaysInSprint
 
+	// remove existing database file */
+	if _, err := os.Stat("./data.sqlite"); os.IsNotExist(err) {
+		// File does not exist
+	} else {
+		// File exists, try to remove it
+		if err := os.Remove("./data.sqlite"); err != nil {
+			fmt.Println("Error removing database file:", err)
+			return
+		}
+	}
+
 	// Open a new database file - Important! Ignore file in Git */
 	db, err := sql.Open("sqlite3", "./data.sqlite")
 	if err != nil {
