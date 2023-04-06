@@ -179,6 +179,7 @@ func main() {
 		fmt.Printf("Sprint %d completed %d points\n", points.SprintNumber, points.Completed)
 	}
 
+	/* Important! Ignore file in Git */
 	args, err := readArgsFile("arguments.json")
 	if err != nil {
 		fmt.Println("Error reading arguments.json:", err)
@@ -191,7 +192,7 @@ func main() {
 	team := args.Team
 	sprintStart := args.SprintStart
 
-	// Open a new database file
+	// Open a new database file - Important! Ignore file in Git */
 	db, err := sql.Open("sqlite3", "./data.sqlite")
 	if err != nil {
 		fmt.Println("Error opening database:", err)
